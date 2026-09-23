@@ -12,6 +12,10 @@ class InventoryTransactionModel {
   final DateTime createdAt;
   final DateTime updatedAt;
 
+  // Joined display attributes (not stored in inventory_transactions table)
+  final String? productName;
+  final String? productUnit;
+
   InventoryTransactionModel({
     this.id,
     required this.userId,
@@ -23,10 +27,13 @@ class InventoryTransactionModel {
     this.referenceId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    this.productName,
+    this.productUnit,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
   double? get unitCost => unitCostCents != null ? Money.toDouble(unitCostCents!) : null;
+  String? get formattedUnitCost => unitCostCents != null ? Money.format(unitCostCents!) : null;
 
   Map<String, dynamic> toMap() {
     return {
@@ -55,6 +62,8 @@ class InventoryTransactionModel {
       referenceId: map['reference_id'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      productName: map['product_name'] as String?,
+      productUnit: map['unit'] as String?,
     );
   }
 
@@ -69,6 +78,8 @@ class InventoryTransactionModel {
     String? referenceId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? productName,
+    String? productUnit,
   }) {
     return InventoryTransactionModel(
       id: id ?? this.id,
@@ -81,6 +92,8 @@ class InventoryTransactionModel {
       referenceId: referenceId ?? this.referenceId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      productName: productName ?? this.productName,
+      productUnit: productUnit ?? this.productUnit,
     );
   }
 }

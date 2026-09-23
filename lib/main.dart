@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/providers/auth_provider.dart';
+import 'presentation/providers/inventory_provider.dart';
 import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/login_screen.dart';
 
@@ -20,6 +21,9 @@ class SmallBusinessManagerApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(
           create: (_) => AuthProvider()..checkSession(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => InventoryProvider(),
         ),
       ],
       child: MaterialApp(
