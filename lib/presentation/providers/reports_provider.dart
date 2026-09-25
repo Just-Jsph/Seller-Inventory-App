@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/repositories/dashboard_repository.dart';
 import '../../core/utils/money.dart';
-import '../../providers/auth_provider.dart';
+import 'auth_provider.dart';
 
 class ReportSummary {
   final int totalSalesCents;

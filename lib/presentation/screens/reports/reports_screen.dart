@@ -7,7 +7,9 @@ import '../../providers/reports_provider.dart';
 import '../../widgets/kpi_card.dart';
 
 class ReportsScreen extends StatefulWidget {
-  const ReportsScreen({super.key});
+  final int initialTabIndex;
+  const ReportsScreen({super.key, this.initialTabIndex = 0});
+
 
   @override
   State<ReportsScreen> createState() => _ReportsScreenState();

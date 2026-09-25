@@ -258,5 +258,5 @@ class DashboardRepository {
 
   // Close class
 
-  }
+
 }

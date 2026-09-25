@@ -10,6 +10,7 @@ class DebtModel {
   final double interestValue; // percentage if type is PERCENTAGE
   final int? interestFixedCents; // fixed amount in cents if type is FIXED
   final String interestPeriod; // 'DAILY','WEEKLY','MONTHLY'
+  final int totalAmountCents;
   final int paidAmountCents;
   final DateTime? dueDate;
   final String status; // 'UNPAID', 'PARTIAL', 'PAID'
@@ -36,7 +37,6 @@ class DebtModel {
     DateTime? updatedAt,
   })  : createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
-
   double get totalAmount => Money.toDouble(totalAmountCents);
   double get paidAmount => Money.toDouble(paidAmountCents);
   // Interest calculation based on configuration
@@ -105,7 +105,10 @@ class DebtModel {
     String? customerName,
     String? customerPhone,
     int? totalAmountCents,
-        double? interestRatePercent,
+    String? interestType,
+    double? interestValue,
+    int? interestFixedCents,
+    String? interestPeriod,
     int? paidAmountCents,
     DateTime? dueDate,
     String? status,

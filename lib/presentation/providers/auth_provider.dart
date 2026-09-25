@@ -5,13 +5,16 @@ import '../../data/services/auth_service.dart';
 enum AuthStatus { uninitialized, authenticated, unauthenticated, loading }
 
 class AuthProvider extends ChangeNotifier {
+  static AuthProvider? _instance;
   final AuthService _authService;
 
   UserModel? _currentUser;
   AuthStatus _status = AuthStatus.uninitialized;
   String? _errorMessage;
 
-  AuthProvider({AuthService? authService}) : _authService = authService ?? AuthService();
+  AuthProvider({AuthService? authService}) : _authService = authService ?? AuthService() {
+    _instance = this;
+  }
 
   UserModel? get currentUser => _currentUser;
   AuthStatus get status => _status;
@@ -127,4 +130,6 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
   }
+  static int ofCurrentUserId() => _instance?._currentUser?.id ?? 0;
 }
+
