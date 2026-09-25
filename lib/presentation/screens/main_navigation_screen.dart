@@ -4,6 +4,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../providers/auth_provider.dart';
 import '../providers/inventory_provider.dart';
+import '../providers/dashboard_provider.dart';
 import 'dashboard/dashboard_screen.dart';
 import 'sales/sales_screen.dart';
 import 'inventory/inventory_screen.dart';
@@ -42,9 +43,11 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final invProvider = Provider.of<InventoryProvider>(context, listen: false);
+      final dashProvider = Provider.of<DashboardProvider>(context, listen: false);
       final userId = authProvider.currentUser?.id;
       if (userId != null) {
         invProvider.loadData(userId);
+        dashProvider.loadDashboardData(userId);
       }
     });
   }

@@ -4,6 +4,7 @@ import 'core/constants/app_constants.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/providers/auth_provider.dart';
 import 'presentation/providers/inventory_provider.dart';
+import 'presentation/providers/dashboard_provider.dart';
 import 'presentation/screens/home_screen.dart';
 import 'presentation/screens/login_screen.dart';
 
@@ -24,6 +25,9 @@ class SmallBusinessManagerApp extends StatelessWidget {
         ),
         ChangeNotifierProvider(
           create: (_) => InventoryProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => DashboardProvider(),
         ),
       ],
       child: MaterialApp(

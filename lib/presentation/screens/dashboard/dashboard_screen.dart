@@ -2,25 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/utils/money.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../providers/inventory_provider.dart';
 import '../../widgets/kpi_card.dart';
+import '../../widgets/sales_chart_card.dart';
 import '../sales/add_sale_screen.dart';
 import '../inventory/add_product_screen.dart';
 import '../inventory/restock_screen.dart';
 import '../debts/add_debt_screen.dart';
+import '../debts/record_payment_screen.dart';
 
-/// The central Dashboard screen for Small Business Manager.
-/// Provides quick access to:
-/// - Today's Sales
-/// - Add Sale
-/// - Current Inventory
-/// - Current Profit
-/// - Current Costs
-/// - Outstanding Debt
-/// - Debtors
-/// - Low Stock
-class DashboardScreen extends StatelessWidget {
+/// Comprehensive Dashboard screen for Small Business Manager.
+class DashboardScreen extends StatefulWidget {
   final Function(int tabIndex, {int subTabIndex})? onNavigateToTab;
 
   const DashboardScreen({
@@ -29,11 +24,37 @@ class DashboardScreen extends StatelessWidget {
   });
 
   @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshDashboard();
+    });
+  }
+
+  Future<void> _refreshDashboard() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final userId = authProvider.currentUser?.id;
+    if (userId != null) {
+      final dashProvider = Provider.of<DashboardProvider>(context, listen: false);
+      final invProvider = Provider.of<InventoryProvider>(context, listen: false);
+      await Future.wait([
+        dashProvider.loadDashboardData(userId),
+        invProvider.loadData(userId),
+      ]);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<AuthProvider>(context);
-    final invProvider = Provider.of<InventoryProvider>(context);
+    final dashProvider = Provider.of<DashboardProvider>(context);
     final user = authProvider.currentUser;
-    final invSummary = invProvider.summary;
+    final summary = dashProvider.summary;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -42,12 +63,20 @@ class DashboardScreen extends StatelessWidget {
         title: const Text(AppConstants.appName),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh Data',
+            onPressed: _refreshDashboard,
+          ),
+          IconButton(
             icon: const Icon(Icons.notifications_none_rounded),
             tooltip: 'Notifications',
             onPressed: () {
+              final alertMsg = summary.lowStockCount > 0
+                  ? '${summary.lowStockCount} item(s) are low in stock!'
+                  : 'All business metrics are up to date.';
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('No new alerts. Business health is optimal.'),
+                SnackBar(
+                  content: Text(alertMsg),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -57,22 +86,124 @@ class DashboardScreen extends StatelessWidget {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: () async {
-            if (user?.id != null) {
-              await invProvider.loadData(user!.id!);
-            }
-          },
+          onRefresh: _refreshDashboard,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Welcome / Profile Banner
+                // 1. Header Banner
                 _buildWelcomeHeader(context, user?.name ?? 'Seller', isDark),
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
 
-                // Section 1: Key Performance Indicators (Quick Access)
+                // 2. Quick Action Buttons Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Quick Actions',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                    Text(
+                      'Shortcuts',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Scrollable Quick Action Chips (Add Sale, Add Product, Restock, Add Debt, Debt Payment)
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      // 1. Add Sale
+                      _buildQuickActionButton(
+                        context: context,
+                        icon: Icons.add_shopping_cart_rounded,
+                        label: 'Add Sale',
+                        color: AppColors.primary,
+                        onTap: () async {
+                          final res = await Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AddSaleScreen()),
+                          );
+                          if (res == true) _refreshDashboard();
+                        },
+                      ),
+                      const SizedBox(width: 10),
+
+                      // 2. Add Product
+                      _buildQuickActionButton(
+                        context: context,
+                        icon: Icons.add_box_rounded,
+                        label: 'Add Product',
+                        color: AppColors.secondary,
+                        onTap: () async {
+                          final res = await Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AddProductScreen()),
+                          );
+                          if (res == true) _refreshDashboard();
+                        },
+                      ),
+                      const SizedBox(width: 10),
+
+                      // 3. Restock
+                      _buildQuickActionButton(
+                        context: context,
+                        icon: Icons.published_with_changes_rounded,
+                        label: 'Restock',
+                        color: Colors.teal.shade700,
+                        onTap: () async {
+                          final res = await Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const RestockScreen()),
+                          );
+                          if (res == true) _refreshDashboard();
+                        },
+                      ),
+                      const SizedBox(width: 10),
+
+                      // 4. Add Debt
+                      _buildQuickActionButton(
+                        context: context,
+                        icon: Icons.person_add_alt_1_rounded,
+                        label: 'Add Debt',
+                        color: AppColors.warning,
+                        onTap: () async {
+                          final res = await Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const AddDebtScreen()),
+                          );
+                          if (res == true) _refreshDashboard();
+                        },
+                      ),
+                      const SizedBox(width: 10),
+
+                      // 5. Debt Payment
+                      _buildQuickActionButton(
+                        context: context,
+                        icon: Icons.payments_rounded,
+                        label: 'Debt Payment',
+                        color: Colors.deepOrange,
+                        onTap: () async {
+                          final res = await Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const RecordPaymentScreen()),
+                          );
+                          if (res == true) _refreshDashboard();
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // 3. Key Performance Indicators Section (7 Metrics)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -84,7 +215,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Today',
+                      'Real-time',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -95,7 +226,7 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
 
-                // 2x2 or responsive Grid of KPI Cards
+                // Grid of 7 KPI Cards
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final isTablet = constraints.maxWidth > 600;
@@ -112,83 +243,71 @@ class DashboardScreen extends StatelessWidget {
                         // 1. Today's Sales
                         KpiCard(
                           title: "Today's Sales",
-                          value: '₱0.00',
-                          subtitle: '0 transactions today',
+                          value: Money.format(summary.todaySalesCents),
+                          subtitle: '${summary.todaySalesCount} sale(s) today',
                           icon: Icons.point_of_sale_rounded,
                           color: AppColors.primary,
-                          onTap: () => onNavigateToTab?.call(1, subTabIndex: 0),
+                          onTap: () => widget.onNavigateToTab?.call(1, subTabIndex: 0),
                         ),
 
-                        // 2. Current Profit
+                        // 2. Today's Cost
                         KpiCard(
-                          title: 'Current Profit',
-                          value: '₱0.00',
-                          subtitle: 'Gross profit today',
-                          icon: Icons.trending_up_rounded,
-                          color: AppColors.success,
-                          onTap: () => onNavigateToTab?.call(4, subTabIndex: 2), // Reports -> Profit
-                        ),
-
-                        // 3. Current Costs
-                        KpiCard(
-                          title: 'Current Costs',
-                          value: '₱0.00',
-                          subtitle: 'Expenses & COGS',
+                          title: "Today's Cost",
+                          value: Money.format(summary.todayCostCents),
+                          subtitle: 'COGS & Expenses',
                           icon: Icons.account_balance_rounded,
                           color: AppColors.error,
-                          onTap: () => onNavigateToTab?.call(4, subTabIndex: 1), // Reports -> Cost
+                          onTap: () => widget.onNavigateToTab?.call(4, subTabIndex: 1),
+                        ),
+
+                        // 3. Today's Profit
+                        KpiCard(
+                          title: "Today's Profit",
+                          value: Money.format(summary.todayProfitCents),
+                          subtitle: summary.todayProfitCents >= 0 ? 'Gross profit today' : 'Operating loss',
+                          icon: Icons.trending_up_rounded,
+                          color: summary.todayProfitCents >= 0 ? AppColors.success : AppColors.error,
+                          onTap: () => widget.onNavigateToTab?.call(4, subTabIndex: 2),
                         ),
 
                         // 4. Current Inventory
                         KpiCard(
                           title: 'Current Inventory',
-                          value: '${invSummary.totalProducts} Items',
-                          subtitle: 'Cost: ₱${(invSummary.totalCostCents / 100.0).toStringAsFixed(2)}',
+                          value: '${summary.totalInventoryItems} Items',
+                          subtitle: 'Valued at ${Money.format(summary.totalInventoryValueCents)}',
                           icon: Icons.inventory_2_rounded,
                           color: AppColors.secondary,
-                          onTap: () => onNavigateToTab?.call(2, subTabIndex: 0), // Inventory -> Stock
+                          onTap: () => widget.onNavigateToTab?.call(2, subTabIndex: 0),
                         ),
 
-                        // 5. Outstanding Debt
+                        // 5. Total Debt
                         KpiCard(
-                          title: 'Outstanding Debt',
-                          value: '₱0.00',
-                          subtitle: 'Total receivables',
+                          title: 'Total Debt',
+                          value: Money.format(summary.totalDebtCents),
+                          subtitle: 'Outstanding balance',
                           icon: Icons.account_balance_wallet_rounded,
                           color: AppColors.warning,
-                          onTap: () => onNavigateToTab?.call(3, subTabIndex: 0), // Debts -> Debtors
+                          onTap: () => widget.onNavigateToTab?.call(3, subTabIndex: 0),
                         ),
 
-                        // 6. Debtors
+                        // 6. Number of Debtors
                         KpiCard(
-                          title: 'Active Debtors',
-                          value: '0 Customers',
-                          subtitle: '0 overdue accounts',
+                          title: 'Number of Debtors',
+                          value: '${summary.numberOfDebtors} Debtors',
+                          subtitle: summary.numberOfDebtors > 0 ? 'Active debtor accounts' : 'No open debts',
                           icon: Icons.people_alt_rounded,
                           color: Colors.deepOrange,
-                          onTap: () => onNavigateToTab?.call(3, subTabIndex: 0), // Debts -> Debtors
+                          onTap: () => widget.onNavigateToTab?.call(3, subTabIndex: 0),
                         ),
 
                         // 7. Low Stock
                         KpiCard(
-                          title: 'Low Stock Alert',
-                          value: '${invSummary.lowStockCount + invSummary.outOfStockCount} Items',
-                          subtitle: invSummary.lowStockCount + invSummary.outOfStockCount > 0
-                              ? 'Needs replenishment'
-                              : 'Stock level healthy',
+                          title: 'Low Stock',
+                          value: '${summary.lowStockCount} Items',
+                          subtitle: summary.lowStockCount > 0 ? 'Needs replenishment' : 'Stock levels healthy',
                           icon: Icons.warning_amber_rounded,
-                          color: Colors.amber.shade800,
-                          onTap: () => onNavigateToTab?.call(2, subTabIndex: 0), // Inventory -> Stock
-                        ),
-
-                        // 8. Sales History
-                        KpiCard(
-                          title: 'Sales History',
-                          value: 'All Records',
-                          subtitle: 'Tap to view log',
-                          icon: Icons.history_rounded,
-                          color: Colors.indigo,
-                          onTap: () => onNavigateToTab?.call(1, subTabIndex: 1), // Sales -> History
+                          color: summary.lowStockCount > 0 ? Colors.amber.shade800 : AppColors.success,
+                          onTap: () => widget.onNavigateToTab?.call(2, subTabIndex: 0),
                         ),
                       ],
                     );
@@ -196,149 +315,89 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
 
-                // Section 2: Quick Actions
-                Text(
-                  'Quick Actions',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.2,
-                  ),
+                // 4. Sales Revenue Trend Chart
+                SalesChartCard(
+                  data: summary.dailySalesChartData,
+                  selectedDays: dashProvider.selectedChartDays,
+                  isLoading: dashProvider.isLoading,
+                  onDaysChanged: (days) {
+                    if (user?.id != null) {
+                      dashProvider.setChartDays(user!.id!, days);
+                    }
+                  },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 20),
 
-                // Quick Action Buttons Row
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      // Quick Action: Add Sale
-                      _buildQuickActionChip(
-                        context: context,
-                        icon: Icons.add_shopping_cart_rounded,
-                        label: 'Add Sale',
-                        color: AppColors.primary,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const AddSaleScreen()),
-                          );
-                        },
+                // 5. Low Stock Quick Alert Banner (If items need restock)
+                if (summary.lowStockCount > 0)
+                  Card(
+                    elevation: 0,
+                    color: Colors.amber.withValues(alpha: isDark ? 0.15 : 0.08),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: Colors.amber.withValues(alpha: 0.3),
                       ),
-                      const SizedBox(width: 10),
-
-                      // Quick Action: Add Product
-                      _buildQuickActionChip(
-                        context: context,
-                        icon: Icons.add_box_rounded,
-                        label: 'Add Product',
-                        color: AppColors.secondary,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const AddProductScreen()),
-                          );
-                        },
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.amber,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${summary.lowStockCount} Product(s) Low in Stock',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Replenish inventory to avoid running out of stock.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.amber.shade800,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () async {
+                              final res = await Navigator.of(context).push(
+                                MaterialPageRoute(builder: (_) => const RestockScreen()),
+                              );
+                              if (res == true) _refreshDashboard();
+                            },
+                            child: const Text('Restock Now', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 10),
-
-                      // Quick Action: Restock
-                      _buildQuickActionChip(
-                        context: context,
-                        icon: Icons.published_with_changes_rounded,
-                        label: 'Restock',
-                        color: Colors.teal.shade700,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const RestockScreen()),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 10),
-
-                      // Quick Action: Add Debt
-                      _buildQuickActionChip(
-                        context: context,
-                        icon: Icons.person_add_alt_1_rounded,
-                        label: 'Add Debt',
-                        color: AppColors.warning,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const AddDebtScreen()),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 10),
-
-                      // Quick Action: View Reports
-                      _buildQuickActionChip(
-                        context: context,
-                        icon: Icons.analytics_outlined,
-                        label: 'Reports',
-                        color: AppColors.info,
-                        onTap: () => onNavigateToTab?.call(4),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Section 3: Business Readiness & Status Notice
-                Card(
-                  elevation: 0,
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.04)
-                      : AppColors.primary.withValues(alpha: 0.05),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.08)
-                          : AppColors.primary.withValues(alpha: 0.15),
                     ),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.auto_graph_rounded,
-                            color: AppColors.primary,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Navigation Structure Ready',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'All main modules (Sales, Inventory, Debts, Reports, Settings) are wired up with Material 3 navigation and ready for database calculations.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDark ? Colors.grey.shade400 : Colors.grey.shade700,
-                                  height: 1.4,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                const SizedBox(height: 16),
               ],
             ),
           ),
@@ -349,7 +408,7 @@ class DashboardScreen extends StatelessWidget {
 
   Widget _buildWelcomeHeader(BuildContext context, String userName, bool isDark) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(18.0),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isDark
@@ -387,7 +446,7 @@ class DashboardScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Hello, $userName 👋',
+                  'Welcome, $userName 👋',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 17,
@@ -396,7 +455,7 @@ class DashboardScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Store Management Dashboard',
+                  'Small Business Manager Dashboard',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 12,
@@ -414,10 +473,10 @@ class DashboardScreen extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: const [
-                Icon(Icons.shield_rounded, color: Colors.white, size: 14),
+                Icon(Icons.verified_user_rounded, color: Colors.white, size: 14),
                 SizedBox(width: 4),
                 Text(
-                  'Online',
+                  'Active',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 11,
@@ -432,7 +491,7 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionChip({
+  Widget _buildQuickActionButton({
     required BuildContext context,
     required IconData icon,
     required String label,
@@ -447,7 +506,7 @@ class DashboardScreen extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
           decoration: BoxDecoration(
             color: color.withValues(alpha: isDark ? 0.2 : 0.1),
             borderRadius: BorderRadius.circular(14),
@@ -458,13 +517,13 @@ class DashboardScreen extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 18, color: color),
+              Icon(icon, size: 19, color: color),
               const SizedBox(width: 8),
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : color,
                 ),
               ),

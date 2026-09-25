@@ -11,6 +11,7 @@ import 'package:small_business_manager/data/services/auth_service.dart';
 import 'package:small_business_manager/data/services/inventory_service.dart';
 import 'package:small_business_manager/presentation/providers/auth_provider.dart';
 import 'package:small_business_manager/presentation/providers/inventory_provider.dart';
+import 'package:small_business_manager/presentation/providers/dashboard_provider.dart';
 import 'package:small_business_manager/presentation/screens/main_navigation_screen.dart';
 
 void main() {
@@ -25,6 +26,7 @@ void main() {
   late InventoryRepository inventoryRepo;
   late InventoryService inventoryService;
   late InventoryProvider inventoryProvider;
+  late DashboardProvider dashboardProvider;
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
@@ -38,6 +40,7 @@ void main() {
     );
     authProvider = AuthProvider(authService: authService);
     inventoryProvider = InventoryProvider(inventoryService: inventoryService);
+    dashboardProvider = DashboardProvider();
 
     // Register a test user
     await authService.register(
@@ -57,6 +60,7 @@ void main() {
       providers: [
         ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
         ChangeNotifierProvider<InventoryProvider>.value(value: inventoryProvider),
+        ChangeNotifierProvider<DashboardProvider>.value(value: dashboardProvider),
       ],
       child: MaterialApp(
         theme: AppTheme.lightTheme,
@@ -69,14 +73,14 @@ void main() {
     await tester.pumpWidget(createWidgetUnderTest());
     await tester.pumpAndSettle();
 
-    // Verify Dashboard is visible
+    // Verify Dashboard metrics are visible
     expect(find.text("Today's Sales"), findsWidgets);
-    expect(find.text('Current Profit'), findsOneWidget);
-    expect(find.text('Current Costs'), findsOneWidget);
+    expect(find.text("Today's Cost"), findsOneWidget);
+    expect(find.text("Today's Profit"), findsOneWidget);
     expect(find.text('Current Inventory'), findsOneWidget);
-    expect(find.text('Outstanding Debt'), findsOneWidget);
-    expect(find.text('Active Debtors'), findsOneWidget);
-    expect(find.text('Low Stock Alert'), findsOneWidget);
+    expect(find.text('Total Debt'), findsOneWidget);
+    expect(find.text('Number of Debtors'), findsOneWidget);
+    expect(find.text('Low Stock'), findsOneWidget);
 
     // Verify Bottom Navigation Bar Destinations
     expect(find.byType(NavigationBar), findsOneWidget);
