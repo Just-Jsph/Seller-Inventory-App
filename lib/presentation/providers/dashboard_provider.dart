@@ -5,8 +5,10 @@ import '../../data/services/inventory_service.dart';
 class DashboardSummaryData {
   final int todaySalesCents;
   final int todaySalesCount;
-  final int todayCostCents;
-  final int todayProfitCents;
+  final int todayCogsCents; // Cost of Goods Sold
+  final int todayExpenseCents; // Operating expenses
+  final int todayGrossProfitCents; // Revenue - COGS
+  final int todayNetProfitCents; // Gross profit - expenses
   final int totalInventoryItems;
   final int totalInventoryValueCents;
   final int totalDebtCents;
@@ -17,8 +19,10 @@ class DashboardSummaryData {
   DashboardSummaryData({
     required this.todaySalesCents,
     required this.todaySalesCount,
-    required this.todayCostCents,
-    required this.todayProfitCents,
+    required this.todayCogsCents,
+    required this.todayExpenseCents,
+    required this.todayGrossProfitCents,
+    required this.todayNetProfitCents,
     required this.totalInventoryItems,
     required this.totalInventoryValueCents,
     required this.totalDebtCents,
@@ -30,8 +34,10 @@ class DashboardSummaryData {
   factory DashboardSummaryData.empty() => DashboardSummaryData(
         todaySalesCents: 0,
         todaySalesCount: 0,
-        todayCostCents: 0,
-        todayProfitCents: 0,
+        todayCogsCents: 0,
+        todayExpenseCents: 0,
+        todayGrossProfitCents: 0,
+        todayNetProfitCents: 0,
         totalInventoryItems: 0,
         totalInventoryValueCents: 0,
         totalDebtCents: 0,
@@ -86,14 +92,18 @@ class DashboardProvider extends ChangeNotifier {
 
       final todaySalesCents = todaySalesMap['totalSalesCents'] as int;
       final todaySalesCount = todaySalesMap['salesCount'] as int;
-      final todayCostCents = todayCostMap['totalCostCents'] as int;
-      final todayProfitCents = todaySalesCents - todayCostCents;
+      final todayCogsCents = todayCostMap['cogsCents'] as int;
+      final todayExpenseCents = todayCostMap['expenseCents'] as int;
+      final todayGrossProfitCents = todaySalesCents - todayCogsCents;
+      final todayNetProfitCents = todayGrossProfitCents - todayExpenseCents;
 
       _summary = DashboardSummaryData(
         todaySalesCents: todaySalesCents,
         todaySalesCount: todaySalesCount,
-        todayCostCents: todayCostCents,
-        todayProfitCents: todayProfitCents,
+        todayCogsCents: todayCogsCents,
+        todayExpenseCents: todayExpenseCents,
+        todayGrossProfitCents: todayGrossProfitCents,
+        todayNetProfitCents: todayNetProfitCents,
         totalInventoryItems: invSummary.totalProducts,
         totalInventoryValueCents: invSummary.totalCostCents,
         totalDebtCents: totalDebtCents,
@@ -119,8 +129,10 @@ class DashboardProvider extends ChangeNotifier {
       _summary = DashboardSummaryData(
         todaySalesCents: _summary.todaySalesCents,
         todaySalesCount: _summary.todaySalesCount,
-        todayCostCents: _summary.todayCostCents,
-        todayProfitCents: _summary.todayProfitCents,
+        todayCogsCents: _summary.todayCogsCents,
+        todayExpenseCents: _summary.todayExpenseCents,
+        todayGrossProfitCents: _summary.todayGrossProfitCents,
+        todayNetProfitCents: _summary.todayNetProfitCents,
         totalInventoryItems: _summary.totalInventoryItems,
         totalInventoryValueCents: _summary.totalInventoryValueCents,
         totalDebtCents: _summary.totalDebtCents,

@@ -5,7 +5,11 @@ class DebtModel {
   final int userId;
   final String customerName;
   final String? customerPhone;
-  final int totalAmountCents;
+  // Interest configuration
+  final String interestType; // 'PERCENTAGE' or 'FIXED'
+  final double interestValue; // percentage if type is PERCENTAGE
+  final int? interestFixedCents; // fixed amount in cents if type is FIXED
+  final String interestPeriod; // 'DAILY','WEEKLY','MONTHLY'
   final int paidAmountCents;
   final DateTime? dueDate;
   final String status; // 'UNPAID', 'PARTIAL', 'PAID'
@@ -19,6 +23,11 @@ class DebtModel {
     required this.customerName,
     this.customerPhone,
     required this.totalAmountCents,
+    // Interest defaults: no interest
+    this.interestType = 'PERCENTAGE',
+    this.interestValue = 0.0,
+    this.interestFixedCents = null,
+    this.interestPeriod = 'MONTHLY',
     this.paidAmountCents = 0,
     this.dueDate,
     this.status = 'UNPAID',
@@ -30,8 +39,24 @@ class DebtModel {
 
   double get totalAmount => Money.toDouble(totalAmountCents);
   double get paidAmount => Money.toDouble(paidAmountCents);
-  double get remainingAmount => Money.toDouble(totalAmountCents - paidAmountCents);
-  int get remainingAmountCents => totalAmountCents - paidAmountCents;
+  // Interest calculation based on configuration
+  int get interestCents {
+    if (interestType == 'PERCENTAGE') {
+      return ((totalAmountCents * interestValue) / 100).round();
+    } else if (interestType == 'FIXED') {
+      return interestFixedCents ?? 0;
+    }
+    return 0;
+  }
+
+  int get totalDueCents => totalAmountCents + interestCents;
+  double get totalDue => Money.toDouble(totalDueCents);
+
+  int get remainingAmountCents => totalDueCents - paidAmountCents;
+  double get remainingAmount => Money.toDouble(remainingAmountCents);
+
+  String get formattedInterest => Money.format(interestCents);
+  String get formattedTotalDue => Money.format(totalDueCents);
   String get formattedRemaining => Money.format(remainingAmountCents);
 
   Map<String, dynamic> toMap() {
@@ -41,6 +66,10 @@ class DebtModel {
       'customer_name': customerName,
       'customer_phone': customerPhone,
       'total_amount_cents': totalAmountCents,
+      'interest_type': interestType,
+      'interest_value': interestValue,
+      'interest_fixed_cents': interestFixedCents,
+      'interest_period': interestPeriod,
       'paid_amount_cents': paidAmountCents,
       'due_date': dueDate?.toIso8601String(),
       'status': status,
@@ -57,6 +86,10 @@ class DebtModel {
       customerName: map['customer_name'] as String,
       customerPhone: map['customer_phone'] as String?,
       totalAmountCents: map['total_amount_cents'] as int,
+      interestType: map['interest_type'] as String? ?? 'PERCENTAGE',
+      interestValue: (map['interest_value'] as num?)?.toDouble() ?? 0.0,
+      interestFixedCents: map['interest_fixed_cents'] as int?,
+      interestPeriod: map['interest_period'] as String? ?? 'MONTHLY',
       paidAmountCents: (map['paid_amount_cents'] as int?) ?? 0,
       dueDate: map['due_date'] != null ? DateTime.parse(map['due_date'] as String) : null,
       status: (map['status'] as String?) ?? 'UNPAID',
@@ -72,6 +105,7 @@ class DebtModel {
     String? customerName,
     String? customerPhone,
     int? totalAmountCents,
+        double? interestRatePercent,
     int? paidAmountCents,
     DateTime? dueDate,
     String? status,
@@ -85,6 +119,10 @@ class DebtModel {
       customerName: customerName ?? this.customerName,
       customerPhone: customerPhone ?? this.customerPhone,
       totalAmountCents: totalAmountCents ?? this.totalAmountCents,
+      interestType: interestType ?? this.interestType,
+      interestValue: interestValue ?? this.interestValue,
+      interestFixedCents: interestFixedCents ?? this.interestFixedCents,
+      interestPeriod: interestPeriod ?? this.interestPeriod,
       paidAmountCents: paidAmountCents ?? this.paidAmountCents,
       dueDate: dueDate ?? this.dueDate,
       status: status ?? this.status,

@@ -124,6 +124,7 @@ class AppTables {
       customer_phone TEXT,
       total_amount_cents INTEGER NOT NULL DEFAULT 0,
       paid_amount_cents INTEGER NOT NULL DEFAULT 0,
+      interest_rate_percent REAL NOT NULL DEFAULT 0,
       due_date TEXT,
       status TEXT NOT NULL DEFAULT 'UNPAID',
       notes TEXT,

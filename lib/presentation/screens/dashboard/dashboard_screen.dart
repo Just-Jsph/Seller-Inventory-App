@@ -87,10 +87,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _refreshDashboard,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
+          child: dashProvider.isLoading && summary == DashboardSummaryData.empty()
+    ? const Center(child: CircularProgressIndicator())
+    : SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. Header Banner
@@ -198,6 +200,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           if (res == true) _refreshDashboard();
                         },
                       ),
+    const SizedBox(width: 10),
+    // 6. Reports
+    _buildQuickActionButton(
+      context: context,
+      icon: Icons.bar_chart_rounded,
+      label: 'Reports',
+      color: AppColors.success,
+      onTap: () async {
+        final res = await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const ReportsScreen()),
+        );
+        if (res == true) _refreshDashboard();
+      },
+    ),
                     ],
                   ),
                 ),
@@ -250,24 +266,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           onTap: () => widget.onNavigateToTab?.call(1, subTabIndex: 0),
                         ),
 
-                        // 2. Today's Cost
+                        // 2. Today's COGS (Cost of Goods Sold)
                         KpiCard(
-                          title: "Today's Cost",
-                          value: Money.format(summary.todayCostCents),
-                          subtitle: 'COGS & Expenses',
-                          icon: Icons.account_balance_rounded,
+                          title: "Today's COGS",
+                          value: Money.format(summary.todayCogsCents),
+                          subtitle: 'Cost of goods sold',
+                          icon: Icons.production_quantity_limits_rounded,
                           color: AppColors.error,
                           onTap: () => widget.onNavigateToTab?.call(4, subTabIndex: 1),
                         ),
 
-                        // 3. Today's Profit
+                        // 3. Today's Expenses
                         KpiCard(
-                          title: "Today's Profit",
-                          value: Money.format(summary.todayProfitCents),
-                          subtitle: summary.todayProfitCents >= 0 ? 'Gross profit today' : 'Operating loss',
-                          icon: Icons.trending_up_rounded,
-                          color: summary.todayProfitCents >= 0 ? AppColors.success : AppColors.error,
+                          title: "Today's Expenses",
+                          value: Money.format(summary.todayExpenseCents),
+                          subtitle: 'Operational expenses',
+                          icon: Icons.receipt_long_rounded,
+                          color: Colors.orangeAccent,
                           onTap: () => widget.onNavigateToTab?.call(4, subTabIndex: 2),
+                        ),
+
+                        // 4. Today's Gross Profit
+                        KpiCard(
+                          title: "Today's Gross Profit",
+                          value: Money.format(summary.todayGrossProfitCents),
+                          subtitle: summary.todayGrossProfitCents >= 0 ? 'Revenue - COGS' : 'Loss',
+                          icon: Icons.trending_up_rounded,
+                          color: summary.todayGrossProfitCents >= 0 ? AppColors.success : AppColors.error,
+                          onTap: () => widget.onNavigateToTab?.call(4, subTabIndex: 3),
+                        ),
+
+                        // 5. Today's Net Profit
+                        KpiCard(
+                          title: "Today's Net Profit",
+                          value: Money.format(summary.todayNetProfitCents),
+                          subtitle: summary.todayNetProfitCents >= 0 ? 'Profit after expenses' : 'Net loss',
+                          icon: Icons.account_balance_wallet_rounded,
+                          color: summary.todayNetProfitCents >= 0 ? AppColors.success : AppColors.error,
+                          onTap: () => widget.onNavigateToTab?.call(4, subTabIndex: 4),
                         ),
 
                         // 4. Current Inventory
