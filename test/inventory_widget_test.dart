@@ -51,13 +51,13 @@ void main() {
     authProvider = AuthProvider(authService: authService);
     inventoryProvider = InventoryProvider(inventoryService: inventoryService);
 
-    // Register test user
-    await authService.register(
+    // Register test user with unique username for isolated test runs
+    final uniqueUser = 'owner_${DateTime.now().microsecondsSinceEpoch}@store.com';
+    await authProvider.register(
       name: 'Store Owner',
-      usernameOrEmail: 'owner@store.com',
+      usernameOrEmail: uniqueUser,
       password: 'password123',
     );
-    await authProvider.checkSession();
   });
 
   tearDown(() async {
@@ -78,32 +78,44 @@ void main() {
   }
 
   testWidgets('AddProductScreen creates a new product and records initial movement', (tester) async {
+    expect(authProvider.currentUser, isNotNull, reason: 'Auth user must be logged in');
+    expect(authProvider.currentUser?.id, isNotNull);
+
     await tester.pumpWidget(createTestApp(const AddProductScreen()));
     await tester.pumpAndSettle();
 
-    // Fill form
-    final nameField = find.widgetWithText(TextFormField, 'Product Name *');
+    // Fill form using exact labelText predicates with ensureVisible
+    Finder fieldByLabel(String labelPrefix) {
+      return find.byWidgetPredicate((w) => w is TextField && (w.decoration?.labelText?.startsWith(labelPrefix) ?? false));
+    }
+
+    final nameField = fieldByLabel('Product Name');
+    await tester.ensureVisible(nameField);
     await tester.enterText(nameField, 'Matcha Green Tea 100g');
 
-    final costField = find.widgetWithText(TextFormField, 'Cost Price (₱) *');
+    final costField = fieldByLabel('Cost Price');
     await tester.ensureVisible(costField);
     await tester.enterText(costField, '120.00');
 
-    final sellField = find.widgetWithText(TextFormField, 'Selling Price (₱) *');
+    final sellField = fieldByLabel('Selling Price');
     await tester.ensureVisible(sellField);
     await tester.enterText(sellField, '200.00');
 
-    final stockField = find.widgetWithText(TextFormField, 'Initial Opening Stock (pcs)');
+    final stockField = fieldByLabel('Initial Opening Stock');
     await tester.ensureVisible(stockField);
     await tester.enterText(stockField, '50');
 
-    final minStockField = find.widgetWithText(TextFormField, 'Low Stock Alert Threshold (pcs) *');
+    final minStockField = fieldByLabel('Low Stock Alert Threshold');
     await tester.ensureVisible(minStockField);
     await tester.enterText(minStockField, '10');
     await tester.pumpAndSettle();
 
+    // Scroll down to reveal submit button
+    await tester.drag(find.byType(ListView), const Offset(0, -800));
+    await tester.pumpAndSettle();
+
     // Submit
-    final submitBtn = find.text('Create Product & Record Stock');
+    final submitBtn = find.widgetWithText(FilledButton, 'Create Product & Record Stock');
     await tester.ensureVisible(submitBtn);
     await tester.pumpAndSettle();
     await tester.tap(submitBtn);
@@ -135,13 +147,26 @@ void main() {
     await tester.pumpWidget(createTestApp(RestockScreen(initialProduct: product)));
     await tester.pumpAndSettle();
 
+    Finder fieldByLabel(String labelPrefix) {
+      return find.byWidgetPredicate((w) => w is TextField && (w.decoration?.labelText?.startsWith(labelPrefix) ?? false));
+    }
+
     // Enter quantity to add
-    await tester.enterText(find.widgetWithText(TextFormField, 'Quantity to Add *'), '20');
-    await tester.enterText(find.widgetWithText(TextFormField, 'Supplier / PO / Invoice # (Optional)'), 'PO-882');
+    final qtyField = fieldByLabel('Quantity to Add');
+    await tester.ensureVisible(qtyField);
+    await tester.enterText(qtyField, '20');
+
+    final supplierField = fieldByLabel('Supplier');
+    await tester.ensureVisible(supplierField);
+    await tester.enterText(supplierField, 'PO-882');
+    await tester.pumpAndSettle();
+
+    // Scroll down to reveal restock button
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
     await tester.pumpAndSettle();
 
     // Submit Restock
-    final restockBtn = find.text('Confirm Restock & Record Movement');
+    final restockBtn = find.widgetWithText(FilledButton, 'Confirm Restock & Record Movement');
     await tester.ensureVisible(restockBtn);
     await tester.pumpAndSettle();
     await tester.tap(restockBtn);
